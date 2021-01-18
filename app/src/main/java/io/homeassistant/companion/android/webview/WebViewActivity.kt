@@ -32,7 +32,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.CheckBox
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
@@ -46,6 +45,7 @@ import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import com.google.android.material.textfield.TextInputEditText
 import eightbitlab.com.blurview.RenderScriptBlur
 import io.homeassistant.companion.android.BaseActivity
 import io.homeassistant.companion.android.BuildConfig
@@ -370,6 +370,7 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
                                     .getString("event") == "connected"
                                 if (isConnected) {
                                     alertDialog?.cancel()
+                                    presenter.checkSecurityVersion()
                                 }
                             }
                             "config/get" -> {
@@ -750,7 +751,11 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
         super.onDestroy()
     }
 
-    override fun showError(isAuthenticationError: Boolean, error: SslError?, description: String?) {
+    override fun showError(
+        errorType: io.homeassistant.companion.android.webview.WebView.ErrorType,
+        error: SslError?,
+        description: String?
+    ) {
         if (isShowingError || !isStarted)
             return
         isShowingError = true
@@ -763,13 +768,13 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
                 waitForConnection()
             }
 
-        if (isAuthenticationError) {
+        if (errorType == io.homeassistant.companion.android.webview.WebView.ErrorType.AUTHENTICATION) {
             alert.setMessage(R.string.error_auth_revoked)
             alert.setPositiveButton(android.R.string.ok) { _, _ ->
                 presenter.clearKnownUrls()
                 openOnBoarding()
             }
-        } else if (error != null || description != null) {
+        } else if (errorType == io.homeassistant.companion.android.webview.WebView.ErrorType.SSL) {
             if (description != null)
                 alert.setMessage(getString(R.string.webview_error_description) + " " + description)
             else if (error!!.primaryError == SslError.SSL_DATE_INVALID)
@@ -789,6 +794,17 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
             }
             alert.setNeutralButton(R.string.exit) { _, _ ->
                 finishAffinity()
+            }
+        } else if (errorType == io.homeassistant.companion.android.webview.WebView.ErrorType.SECURITY_WARNING) {
+            alert.setTitle(R.string.security_vulnerably_title)
+            alert.setMessage(R.string.security_vulnerably_message)
+            alert.setPositiveButton(R.string.security_vulnerably_view) { _, _ ->
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.setData(Uri.parse("https://www.home-assistant.io/blog/2021/01/14/security-bulletin/"))
+                startActivity(intent)
+            }
+            alert.setNegativeButton(R.string.security_vulnerably_understand) { _, _ ->
+                // Noop
             }
         } else {
             alert.setMessage(R.string.webview_error)
@@ -819,8 +835,8 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
 
         val inflater = layoutInflater
         val dialogLayout = inflater.inflate(R.layout.dialog_authentication, null)
-        val username = dialogLayout.findViewById<EditText>(R.id.username)
-        val password = dialogLayout.findViewById<EditText>(R.id.password)
+        val username = dialogLayout.findViewById<TextInputEditText>(R.id.username)
+        val password = dialogLayout.findViewById<TextInputEditText>(R.id.password)
         val remember = dialogLayout.findViewById<CheckBox>(R.id.checkBox)
         val viewPassword = dialogLayout.findViewById<ImageView>(R.id.viewPassword)
         var autoAuth = false
@@ -829,11 +845,11 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
             if (password.transformationMethod == PasswordTransformationMethod.getInstance()) {
                 password.transformationMethod = HideReturnsTransformationMethod.getInstance()
                 viewPassword.setImageResource(R.drawable.ic_visibility_off)
-                password.setSelection(password.text.length)
+                password.text?.let { it1 -> password.setSelection(it1.length) }
             } else {
                 password.transformationMethod = PasswordTransformationMethod.getInstance()
                 viewPassword.setImageResource(R.drawable.ic_visibility)
-                password.setSelection(password.text.length)
+                password.text?.let { it1 -> password.setSelection(it1.length) }
             }
         }
 
@@ -846,11 +862,12 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
         }
 
         var message = host + " " + getString(R.string.required_fields)
-        if (resourceURL.subSequence(0, 5).toString() == "http:")
-            message = "http://" + message + " " + getString(R.string.not_private)
-        else
-            message = "https://" + message
-
+        if (resourceURL.length >= 5) {
+            message = if (resourceURL.subSequence(0, 5).toString() == "http:")
+                "http://" + message + " " + getString(R.string.not_private)
+            else
+                "https://$message"
+        }
         if (!autoAuth || authError) {
             AlertDialog.Builder(this, R.style.Authentication_Dialog)
                 .setTitle(R.string.auth_request)

@@ -1,7 +1,7 @@
 object Config {
 
     object Plugin {
-        const val android = "com.android.tools.build:gradle:4.1.0"
+        const val android = "com.android.tools.build:gradle:4.1.1"
         const val kotlin = "org.jetbrains.kotlin:kotlin-gradle-plugin:${Dependency.Kotlin.version}"
         const val google = "com.google.gms:google-services:4.3.4"
         const val appDistribution = "com.google.firebase:firebase-appdistribution-gradle:2.0.1"
@@ -11,39 +11,45 @@ object Config {
     object Android {
         const val compileSdk = 30
         const val minSdk = 21
+        const val minSdkWear = 23
         const val targetSdk = 30
         const val ndk = "21.3.6528147"
     }
 
     object Dependency {
         object Kotlin {
-            const val version = "1.4.10"
+            const val version = "1.4.21"
             const val core = "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${version}"
             const val reflect = "org.jetbrains.kotlin:kotlin-reflect:${version}"
 
-            private const val coroutinesVersion = "1.3.9"
+            private const val coroutinesVersion = "1.4.1"
             const val coroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${coroutinesVersion}"
-            const val coroutinesPlayServices = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.3.9"
+            const val coroutinesPlayServices = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.4.1"
             const val coroutinesAndroid = "org.jetbrains.kotlinx:kotlinx-coroutines-android:${coroutinesVersion}"
             const val coroutinesTest = "org.jetbrains.kotlinx:kotlinx-coroutines-test:${coroutinesVersion}"
         }
 
         object Google {
-            private const val daggerVersion = "2.29.1"
+            private const val daggerVersion = "2.30.1"
             const val dagger = "com.google.dagger:dagger:${daggerVersion}"
             const val daggerCompiler = "com.google.dagger:dagger-compiler:${daggerVersion}"
 
             const val material = "com.google.android.material:material:1.2.1"
+
+            const val wearableSupport = "com.google.android.support:wearable:2.8.1"
+            const val wearable = "com.google.android.wearable:wearable:2.8.1"
         }
 
         object AndroidX {
 
-            const val webKit = "androidx.webkit:webkit:1.3.0"
+            const val webKit = "androidx.webkit:webkit:1.4.0"
             const val appcompat = "androidx.appcompat:appcompat:1.2.0"
             const val lifecycle = "androidx.lifecycle:lifecycle-runtime-ktx:2.2.0"
             const val recyclerview = "androidx.recyclerview:recyclerview:1.1.0"
             const val constraintlayout = "androidx.constraintlayout:constraintlayout:1.1.3"
             const val preference = "androidx.preference:preference-ktx:1.1.1"
+
+            const val wear = "androidx.wear:wear:1.1.0"
 
             const val navigationFragment = "androidx.navigation:navigation-fragment-ktx:2.3.0"
             const val navigationUi = "androidx.navigation:navigation-ui-ktx:2.3.0"
@@ -94,7 +100,7 @@ object Config {
         }
 
         object Misc {
-            const val sentry = "io.sentry:sentry-android:3.1.0"
+            const val sentry = "io.sentry:sentry-android:3.2.0"
             const val jackson = "com.fasterxml.jackson.module:jackson-module-kotlin:2.11.3"
             const val blurView = "com.eightbitlab:blurview:1.6.3"
             const val iconDialog = "com.maltaisn:icondialog:3.3.0"

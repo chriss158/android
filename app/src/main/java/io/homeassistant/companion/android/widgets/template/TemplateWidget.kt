@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
+import android.text.Html.fromHtml
 import android.util.Log
 import android.widget.RemoteViews
 import android.widget.Toast
@@ -32,6 +33,7 @@ class TemplateWidget : AppWidgetProvider() {
             "io.homeassistant.companion.android.widgets.template.TemplateWidget.RECEIVE_DATA"
 
         internal const val EXTRA_TEMPLATE = "extra_template"
+        private var lastIntent = ""
     }
 
     @Inject
@@ -73,12 +75,12 @@ class TemplateWidget : AppWidgetProvider() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action
+        lastIntent = intent.action.toString()
         val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
 
         Log.d(
             TAG, "Broadcast received: " + System.lineSeparator() +
-                    "Broadcast action: " + action + System.lineSeparator() +
+                    "Broadcast action: " + lastIntent + System.lineSeparator() +
                     "AppWidgetId: " + appWidgetId
         )
 
@@ -88,7 +90,7 @@ class TemplateWidget : AppWidgetProvider() {
         val templateWidgetList = templateWidgetDao.getAll()
 
         super.onReceive(context, intent)
-        when (action) {
+        when (lastIntent) {
             UPDATE_VIEW -> updateView(context, appWidgetId)
             RECEIVE_DATA -> saveEntityConfiguration(context, intent.extras, appWidgetId)
             Intent.ACTION_SCREEN_ON -> updateAllWidgets(context, templateWidgetList)
@@ -125,11 +127,12 @@ class TemplateWidget : AppWidgetProvider() {
                     renderedTemplate = integrationUseCase.renderTemplate(widget.template, mapOf())
                 } catch (e: Exception) {
                     Log.e(TAG, "Unable to render template: ${widget.template}", e)
-                    Toast.makeText(context, R.string.widget_template_error, Toast.LENGTH_LONG).show()
+                    if (lastIntent != Intent.ACTION_SCREEN_ON)
+                        Toast.makeText(context, R.string.widget_template_error, Toast.LENGTH_LONG).show()
                 }
                 setTextViewText(
                     R.id.widgetTemplateText,
-                    renderedTemplate
+                    fromHtml(renderedTemplate)
                 )
             }
         }

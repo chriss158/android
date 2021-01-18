@@ -1,9 +1,13 @@
 package io.homeassistant.companion.android.sensors
 
+import android.app.ActivityManager
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.net.TrafficStats
+import android.os.Build
 import android.os.Process
 import android.util.Log
+import androidx.annotation.RequiresApi
 import io.homeassistant.companion.android.BuildConfig
 import io.homeassistant.companion.android.R
 import java.math.RoundingMode
@@ -43,6 +47,27 @@ class AppSensorManager : SensorManager {
             R.string.sensor_description_app_memory,
             unitOfMeasurement = "GB"
         )
+
+        val app_inactive = SensorManager.BasicSensor(
+            "app_inactive",
+            "binary_sensor",
+            R.string.basic_sensor_name_app_inactive,
+            R.string.sensor_description_app_inactive
+        )
+
+        val app_standby_bucket = SensorManager.BasicSensor(
+            "app_standby_bucket",
+            "sensor",
+            R.string.basic_sensor_name_app_standby,
+            R.string.sensor_description_app_standby
+        )
+
+        val app_importance = SensorManager.BasicSensor(
+            "app_importance",
+            "sensor",
+            R.string.basic_sensor_name_app_importance,
+            R.string.sensor_description_app_importance
+        )
     }
 
     override val enabledByDefault: Boolean
@@ -51,8 +76,15 @@ class AppSensorManager : SensorManager {
         get() = R.string.sensor_name_app_sensor
 
     override val availableSensors: List<SensorManager.BasicSensor>
-        get() = listOf(currentVersion, app_rx_gb, app_tx_gb, app_memory)
-
+        get() = when {
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) ->
+                listOf(currentVersion, app_rx_gb, app_tx_gb, app_memory, app_inactive,
+                    app_standby_bucket, app_importance)
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) ->
+                listOf(currentVersion, app_rx_gb, app_tx_gb, app_memory, app_inactive,
+                    app_importance)
+            else -> listOf(currentVersion, app_rx_gb, app_tx_gb, app_memory, app_importance)
+        }
     override fun requiredPermissions(sensorId: String): Array<String> {
         return emptyArray()
     }
@@ -65,6 +97,13 @@ class AppSensorManager : SensorManager {
         updateAppMemory(context)
         updateAppRxGb(context, myUid)
         updateAppTxGb(context, myUid)
+        updateImportanceCheck(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            updateAppInactive(context, usageStatsManager)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                updateAppStandbyBucket(context, usageStatsManager)
+        }
     }
 
     private fun updateCurrentVersion(context: Context) {
@@ -148,6 +187,101 @@ class AppSensorManager : SensorManager {
                 "free_memory" to freeSize.toBigDecimal().setScale(3, RoundingMode.HALF_EVEN),
                 "total_memory" to totalSize.toBigDecimal().setScale(3, RoundingMode.HALF_EVEN)
             )
+        )
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun updateAppInactive(context: Context, usageStatsManager: UsageStatsManager) {
+        if (!isEnabled(context, app_inactive.id))
+            return
+
+        val isAppInactive = usageStatsManager.isAppInactive(context.packageName)
+
+        val icon = if (isAppInactive) "mdi:timer-off-outline" else "mdi:timer-outline"
+
+        onSensorUpdated(
+            context,
+            app_inactive,
+            isAppInactive,
+            icon,
+            mapOf()
+        )
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun updateAppStandbyBucket(context: Context, usageStatsManager: UsageStatsManager) {
+        if (!isEnabled(context, app_standby_bucket.id))
+            return
+
+        val appStandbyBucket = when (usageStatsManager.appStandbyBucket) {
+            UsageStatsManager.STANDBY_BUCKET_ACTIVE -> "active"
+            UsageStatsManager.STANDBY_BUCKET_FREQUENT -> "frequent"
+            UsageStatsManager.STANDBY_BUCKET_RARE -> "rare"
+            UsageStatsManager.STANDBY_BUCKET_RESTRICTED -> "restricted"
+            UsageStatsManager.STANDBY_BUCKET_WORKING_SET -> "working_set"
+            else -> "never"
+        }
+
+        val icon = "mdi:android"
+
+        onSensorUpdated(
+            context,
+            app_standby_bucket,
+            appStandbyBucket,
+            icon,
+            mapOf()
+        )
+    }
+
+    private fun updateImportanceCheck(context: Context) {
+        if (!isEnabled(context, app_importance.id))
+            return
+
+        val appManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val currentProcess = appManager.runningAppProcesses
+        var importance = "not_running"
+        for (item in currentProcess) {
+            if (context.applicationInfo.processName == item.processName) {
+                importance = when (item.importance) {
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED -> {
+                        "cached"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_CANT_SAVE_STATE -> {
+                        "cant_save_state"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND -> {
+                        "foreground"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE -> {
+                        "foreground_service"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE -> {
+                        "gone"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_PERCEPTIBLE -> {
+                        "perceptible"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE -> {
+                        "service"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_TOP_SLEEPING -> {
+                        "top_sleeping"
+                    }
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE -> {
+                        "visible"
+                    }
+                    else -> "not_running"
+                }
+            }
+        }
+        val icon = "mdi:android"
+
+        onSensorUpdated(
+            context,
+            app_importance,
+            importance,
+            icon,
+            mapOf()
         )
     }
 }

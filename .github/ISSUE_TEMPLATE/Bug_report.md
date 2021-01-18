@@ -11,6 +11,7 @@ assignees: ''
 - Make sure you run the latest version of the Android app
 - Make sure you run the latest version of Home Assistant
 - Make sure to check the Companion docs for troubleshooting and configuration: https://companion.home-assistant.io/
+- Make sure the bug you found is not already reported, we love to put work in bugfixes instead of closing duplicate bug reports
   DO NOT DELETE ANY TEXT from this template! All requested information is important.
 -->
 
@@ -26,7 +27,7 @@ assignees: ''
 
 **Description of problem:**
 
-**Traceback (if applicable):**
+**Traceback (if applicable, to get the logs you may refer to: https://companion.home-assistant.io/docs/troubleshooting/faqs/#android-crash-logs):**
 
 ```
 
