@@ -13,10 +13,12 @@ import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.text.Spanned
@@ -27,6 +29,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
+import androidx.core.text.isDigitsOnly
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.vdurmont.emoji.EmojiParser
@@ -39,6 +42,7 @@ import io.homeassistant.companion.android.common.data.integration.IntegrationRep
 import io.homeassistant.companion.android.common.data.url.UrlRepository
 import io.homeassistant.companion.android.database.AppDatabase
 import io.homeassistant.companion.android.database.notification.NotificationItem
+import io.homeassistant.companion.android.location.HighAccuracyLocationService
 import io.homeassistant.companion.android.sensors.LocationSensorManager
 import io.homeassistant.companion.android.util.UrlHandler
 import io.homeassistant.companion.android.util.cancel
@@ -80,6 +84,8 @@ class MessagingService : FirebaseMessagingService() {
         const val COMMAND_BROADCAST_INTENT = "command_broadcast_intent"
         const val COMMAND_VOLUME_LEVEL = "command_volume_level"
         const val COMMAND_BLUETOOTH = "command_bluetooth"
+        const val COMMAND_HIGH_ACCURACY_MODE = "command_high_accuracy_mode"
+        const val COMMAND_ACTIVITY = "command_activity"
 
         // DND commands
         const val DND_PRIORITY_ONLY = "priority_only"
@@ -105,7 +111,7 @@ class MessagingService : FirebaseMessagingService() {
 
         // Command groups
         val DEVICE_COMMANDS = listOf(COMMAND_DND, COMMAND_RINGER_MODE, COMMAND_BROADCAST_INTENT,
-            COMMAND_VOLUME_LEVEL, COMMAND_BLUETOOTH)
+            COMMAND_VOLUME_LEVEL, COMMAND_BLUETOOTH, COMMAND_HIGH_ACCURACY_MODE, COMMAND_ACTIVITY)
         val DND_COMMANDS = listOf(DND_ALARMS_ONLY, DND_ALL, DND_NONE, DND_PRIORITY_ONLY)
         val RM_COMMANDS = listOf(RM_NORMAL, RM_SILENT, RM_VIBRATE)
         val CHANNEL_VOLUME_STREAM = listOf(ALARM_STREAM, MUSIC_STREAM, NOTIFICATION_STREAM, RING_STREAM)
@@ -216,6 +222,28 @@ class MessagingService : FirebaseMessagingService() {
                             else {
                                 mainScope.launch {
                                     Log.d(TAG, "Invalid bluetooth command received, posting notification to device")
+                                    sendNotification(it)
+                                }
+                            }
+                        }
+                        COMMAND_HIGH_ACCURACY_MODE -> {
+                            if (!it[TITLE].isNullOrEmpty() && it[TITLE] in ENABLE_COMMANDS)
+                                handleDeviceCommands(it)
+                            else {
+                                mainScope.launch {
+                                    Log.d(
+                                        TAG,
+                                        "Invalid high accuracy mode command received, posting notification to device"
+                                    )
+                                }
+                            }
+                        }
+                        COMMAND_ACTIVITY -> {
+                            if (!it["tag"].isNullOrEmpty())
+                                handleDeviceCommands(it)
+                            else {
+                                mainScope.launch {
+                                    Log.d(TAG, "Invalid activity command received, posting notification to device")
                                     sendNotification(it)
                                 }
                             }
@@ -355,12 +383,26 @@ class MessagingService : FirebaseMessagingService() {
                 try {
                     val packageName = data["channel"]
                     val intent = Intent(title)
+                    val extras = data["group"]
+                    if (!extras.isNullOrEmpty()) {
+                        val items = extras.split(',')
+                        for (item in items) {
+                            val pair = item.split(":")
+                            intent.putExtra(pair[0], if (pair[1].isDigitsOnly()) pair[1].toInt() else pair[1])
+                        }
+                    }
                     intent.`package` = packageName
                     Log.d(TAG, "Sending broadcast intent")
                     applicationContext.sendBroadcast(intent)
                 } catch (e: Exception) {
                     Log.e(TAG, "Unable to send broadcast intent please check command format", e)
-                    Toast.makeText(applicationContext, R.string.broadcast_intent_error, Toast.LENGTH_LONG).show()
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(
+                            applicationContext,
+                            R.string.broadcast_intent_error,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
             }
             COMMAND_VOLUME_LEVEL -> {
@@ -392,6 +434,25 @@ class MessagingService : FirebaseMessagingService() {
                     bluetoothAdapter.disable()
                 if (title == TURN_ON)
                     bluetoothAdapter.enable()
+            }
+            COMMAND_HIGH_ACCURACY_MODE -> {
+                if (title == TURN_OFF) {
+                    HighAccuracyLocationService.stopService(applicationContext)
+                    LocationSensorManager.setHighAccuracyModeSetting(applicationContext, false)
+                }
+                if (title == TURN_ON) {
+                    HighAccuracyLocationService.startService(applicationContext, LocationSensorManager.getHighAccuracyModeIntervalSetting(applicationContext))
+                    LocationSensorManager.setHighAccuracyModeSetting(applicationContext, true)
+                }
+            }
+            COMMAND_ACTIVITY -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (!Settings.canDrawOverlays(applicationContext))
+                        requestSystemAlertPermission()
+                    else
+                        processActivityCommand(data)
+                } else
+                    processActivityCommand(data)
             }
             else -> Log.d(TAG, "No command received")
         }
@@ -935,7 +996,16 @@ class MessagingService : FirebaseMessagingService() {
     @RequiresApi(Build.VERSION_CODES.M)
     private fun requestDNDPermission() {
         val intent =
-            Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(intent)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun requestSystemAlertPermission() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName"))
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         startActivity(intent)
     }
@@ -981,6 +1051,46 @@ class MessagingService : FirebaseMessagingService() {
                 audioManager.setStreamVolume(AudioManager.STREAM_RING, volumeLevel, AudioManager.FLAG_SHOW_UI)
             }
             else -> Log.d(TAG, "Skipping command due to invalid channel stream")
+        }
+    }
+
+    private fun processActivityCommand(data: Map<String, String>) {
+        try {
+            val packageName = data["channel"]
+            val action = data["tag"]
+            val intentUri = if (!data[TITLE].isNullOrEmpty()) Uri.parse(data[TITLE]) else null
+            val intent = if (intentUri != null) Intent(action, intentUri) else Intent(action)
+            val type = data["subject"]
+            if (!type.isNullOrEmpty())
+                intent.type = type
+            val extras = data["group"]
+            if (!extras.isNullOrEmpty()) {
+                val items = extras.split(',')
+                for (item in items) {
+                    val pair = item.split(":")
+                    intent.putExtra(pair[0], if (pair[1].isDigitsOnly()) pair[1].toInt() else pair[1])
+                }
+            }
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (!packageName.isNullOrEmpty()) {
+                intent.setPackage(packageName)
+                startActivity(intent)
+            } else if (intent.resolveActivity(applicationContext.packageManager) != null)
+                startActivity(intent)
+            else
+                mainScope.launch {
+                    Log.d(TAG, "Posting notification as we do not have enough data to start the activity")
+                    sendNotification(data)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "Unable to send activity intent please check command format", e)
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(
+                    applicationContext,
+                    R.string.activity_intent_error,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 

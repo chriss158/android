@@ -60,6 +60,8 @@
   <string name="basic_sensor_name_location_accurate">Single Accurate Location</string>
   <string name="basic_sensor_name_location_background">Background Location</string>
   <string name="basic_sensor_name_location_zone">Location Zone</string>
+  <string name="basic_sensor_name_mobile_data">Mobile Data</string>
+  <string name="basic_sensor_name_mobile_data_roaming">Mobile Data Roaming</string>
   <string name="basic_sensor_name_mobile_rx_gb">Mobile Rx GB</string>
   <string name="basic_sensor_name_mobile_tx_gb">Mobile Tx GB</string>
   <string name="basic_sensor_name_phone">Phone State</string>
@@ -115,6 +117,7 @@ to your home internet.</string>
   <string name="device_registration">Device Registration</string>
   <string name="dialog_add_panel_shortcut_content">Create a shortcut to this item?</string>
   <string name="dialog_add_panel_shortcut_title">Add Shortcut</string>
+  <string name="disable">Disable</string>
   <string name="disable_all_sensors">Disable All %1$d Sensors</string>
   <string name="documentation">Documentation</string>
   <string name="domain_automation">Automation</string>
@@ -153,6 +156,8 @@ integration enabled on your home assistant instance.</string>
   <string name="fullscreen">Fullscreen</string>
   <string name="fullscreen_def">Put application in full screen</string>
   <string name="grant_permission">Grant Permission</string>
+  <string name="high_accuracy_mode_notification_title">High accuracy (GPS) mode enabled</string>
+  <string name="high_accuracy_mode_channel_name">High accuracy location</string>
   <string name="history">History</string>
   <string name="home_assistant_not_discover">Unable to find your 
 Home Assistant instance</string>
@@ -313,14 +318,16 @@ like to connect to:</string>
   <string name="sensor_description_keyguard_secure">Whether the keyguard is secured by a PIN, pattern or password or a SIM card is currently locked.</string>
   <string name="sensor_description_last_notification">The details of the last notification.</string>
   <string name="sensor_description_last_reboot">The date and time of the devices last reboot. The setting below will allow you to adjust the deadband in milliseconds, if you still find the value to jump incorrectly. The default value is 60000 (1 minute).</string>
+  <string name="sensor_description_last_update">The intent for the last update that was sent, periodic updates will show as \"SensorWorker\". Enabling the \"Add New Intent\" toggle will create 1 setting to allow you to register for a broadcast intent. The toggle will switch back to off once a new setting is created so you will need to turn it back on to save more intents. You can also clear out the setting value to remove the setting in the next update. You must restart the application after making changes to these settings to take effect.</string>
   <string name="sensor_description_last_removed_notification">The details of the last removed notification. This can be any notification either cleared by the user or removed by an application.</string>
-  <string name="sensor_description_last_update">The intent for the last update that was sent, periodic updates will show as \"SensorWorker\".</string>
   <string name="sensor_description_light_sensor">The current level of illuminance</string>
   <string name="sensor_description_location_accurate">Allow Home Assistant to send a notification to request an accurate location along with the application periodically requesting an accurate location.  The Minimum Accuracy setting will allow you to decide how accurate the device location (in meters) has to be in order to send to Home Assistant.  The Minimum time between updates (in milliseconds) keeps the device from sending the accurate location too often. The Include in sensor update setting will make a location request with each sensor update.</string>
   <string name="sensor_description_location_background">Update your location behind the scenes, periodically.  The Minimum Accuracy setting will allow you to decide how accurate the device location (in meters) has to be in order to send to Home Assistant.</string>
   <string name="sensor_description_location_zone">Import existing Home Assistant zones as geofences for zone based tracking.  The Minimum Accuracy setting will allow you to decide how accurate the device location (in meters) has to be in order to send to Home Assistant.</string>
   <string name="sensor_description_lullaby">If a lullaby is playing</string>
   <string name="sensor_description_mic_muted">Whether or not the microphone is muted on the device</string>
+  <string name="sensor_description_mobile_data">Whether or not mobile data is enabled on the device</string>
+  <string name="sensor_description_mobile_data_roaming">Whether or not mobile data roaming is enabled on the device</string>
   <string name="sensor_description_mobile_rx_gb">Total Rx GB on cellular data since last device reboot</string>
   <string name="sensor_description_mobile_tx_gb">Total Tx GB on cellular data since last device reboot</string>
   <string name="sensor_description_music_active">Whether or not music is actively playing on the device</string>
@@ -368,6 +375,7 @@ like to connect to:</string>
   <string name="sensor_name_light">Light Sensor</string>
   <string name="sensor_name_location">Location Sensors</string>
   <string name="sensor_name_mic_muted">Mic Muted</string>
+  <string name="sensor_name_mobile_data">Mobile Data Sensors</string>
   <string name="sensor_name_music_active">Music Active</string>
   <string name="sensor_name_network">Network Sensors</string>
   <string name="sensor_name_phone">Phone Sensors</string>
@@ -475,4 +483,14 @@ like to connect to:</string>
   <string name="widget_text_size_label">Widget text size:</string>
   <string name="widgets">Widgets</string>
   <string name="zone_event_failure">Unable to send zone event to Home Assistant</string>
+  <string name="domain_vacuum">Vacuum</string>
+  <string name="state_cleaning">Cleaning</string>
+  <string name="state_docked">Docked</string>
+  <string name="state_error">Error</string>
+  <string name="state_idle">Idle</string>
+  <string name="state_paused">Paused</string>
+  <string name="state_returning">Returning</string>
+  <string name="state_unavailable">Unavailable</string>
+  <string name="state_unknown">Unknown</string>
+  <string name="activity_intent_error">Unable to send activity intent, please check command format</string>
 </resources>

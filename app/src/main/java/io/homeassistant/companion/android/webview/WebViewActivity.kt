@@ -438,10 +438,17 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
         super.onResume()
         if (currentLang != languagesManager.getCurrentLang())
             recreate()
-        if (!unlocked && !presenter.isLockEnabled())
+        if ((!unlocked && !presenter.isLockEnabled()) ||
+            (!unlocked && presenter.isLockEnabled() && System.currentTimeMillis() < presenter.getSessionExpireMillis()))
             unlocked = true
 
+        SensorWorker.start(this)
         checkAndWarnForDisabledLocation()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        SensorWorker.start(this)
     }
 
     private fun checkAndWarnForDisabledLocation() {
@@ -460,8 +467,7 @@ class WebViewActivity : BaseActivity(), io.homeassistant.companion.android.webvi
                     val coarseLocation = DisabledLocationHandler.containsLocationPermission(permissions, false)
 
                     if ((fineLocation || coarseLocation)) {
-                        if (!DisabledLocationHandler.isLocationEnabled(this, fineLocation))
-                            showLocationDisabledWarning = true
+                        if (!DisabledLocationHandler.isLocationEnabled(this, fineLocation)) showLocationDisabledWarning = true
                         settingsWithLocationPermissions.add(getString(basicSensor.name))
                     }
                 }
